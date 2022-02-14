@@ -10,17 +10,18 @@ import yfinance as yf
 	
 
 
-
-def scrapeTweets(start_date, end_date):
+#scrapes tweets, uncomment data line if you've never tried these dates before
+def scrapeTweets(start_date, end_date, sentiment_correlation):
     delta = dt.timedelta(days=1)
     sentiment = []
     while start_date <= end_date:
         #data = scrape(words=['bitcoin','ethereum'], since=str(start_date), until=str(start_date+delta), from_account = None, interval=1, headless=False, display_type="Top", save_images=False, lang="en",resume=False, filter_replies=False, proximity=False)
-        sentimentAnalysis(start_date, start_date+delta, sentiment, sentiment correlation)
+        sentimentAnalysis(start_date, start_date+delta, sentiment, sentiment_correlation)
         start_date += delta
     return sentiment
 
-def sentimentAnalysis(start_date, stop_date, sentiment):
+#actua;;y performs sentiment analysis on tweets
+def sentimentAnalysis(start_date, stop_date, sentiment, sentiment_correlation):
     #find and parse the csv file
     print(sentiment)
     for file in os.listdir("./outputs"):
@@ -33,11 +34,15 @@ def sentimentAnalysis(start_date, stop_date, sentiment):
     tweets = data['Embedded_text'].values
     totalscore = 0
     #print(start_date)
+
+    #determine ploarity value by sentiment analysis
     for tweet in tweets:
         totalscore += sid_obj.polarity_scores(tweet)['compound']
     if(len(tweets)!=0):
-    	totalscore = totalscore / len(tweets)
-    print (totalscore)
+        totalscore = totalscore / len(tweets)
+    sentiment_correlation.append(totalscore)
+
+    #add colours to array for graph
     if(totalscore > 0.1):
         sentiment.append('green')
     elif(totalscore < -0.1):
@@ -45,38 +50,16 @@ def sentimentAnalysis(start_date, stop_date, sentiment):
     else:
         sentiment.append('gray')
     
-    
+#calculate percentual increase per day and add to array
+def calculateIncrease(percentual_increase):
+    for idx, price in enumerate(open):
+        difference = close[idx] - open[idx]
+        increase = difference / open[idx] * 100
+        percentual_increase.append(increase)
+    return percentual_increase
 
-
-
-if __name__ == "__main__":	
-    sid_obj = SentimentIntensityAnalyzer()
-    #enter correct dates
-    print("start date (yyyy-mm-dd) : ")
-    start_date = input()
-    start_date = start_date.split("-")
-    start = dt.datetime(int(start_date[0]),int(start_date[1]),int(start_date[2]))
-    start_date = dt.date(int(start_date[0]),int(start_date[1]),int(start_date[2]))
-    print("until (yyyy-mm-dd) : ")
-    end_date = input()
-    end_date = end_date.split("-")
-    end = dt.date(int(end_date[0]),int(end_date[1]),int(end_date[2]))
-    end_date = dt.date(int(end_date[0]),int(end_date[1]),int(end_date[2]))
-
-    
-    sentiment = scrapeTweets(start_date, end_date)
-    print(sentiment)
-	#start scraping tweets
-    print(start)
-    btc = yf.download('BTC-USD', start, end)
-    btc = btc.reset_index()
-    print(btc)  
-    print(btc.Date)
-    open = []
-    open = btc.Open
-    dates = btc.Date
-    close = btc.Close
-    total = 0
+#check if the sentiment is accurate for predicting the price
+def sentimentAccuracy(sentiment, open, close, total):
     for idx, colour in enumerate(sentiment):
         print(idx, colour, close[idx], open[idx])
         if(colour == "green"):
@@ -92,32 +75,70 @@ if __name__ == "__main__":
             close[idx]>(open[idx] * 0.99)):
                 print("juist")
                 total = total + 100
+    return total
+
+
+if __name__ == "__main__":	
+
+    #initialize sentiment object
+    sid_obj = SentimentIntensityAnalyzer()
+
+    #enter correct dates
+    print("enter start date (yyyy-mm-dd) : ")
+    start_date = input()
+    start_date = start_date.split("-")
+    start = dt.datetime(int(start_date[0]),int(start_date[1]),int(start_date[2]))
+    start_date = dt.date(int(start_date[0]),int(start_date[1]),int(start_date[2]))
+    print("enter end date (yyyy-mm-dd) : ")
+    end_date = input()
+    end_date = end_date.split("-")
+    end = dt.date(int(end_date[0]),int(end_date[1]),int(end_date[2]))
+    end_date = dt.date(int(end_date[0]),int(end_date[1]),int(end_date[2]))
+
+    #initialize variables
+    sentiment_correlation = []
+    percentual_increase = []
+    total = 0
+
+    print("Would you like to use Twitter(T), news sources (N), quit (Q) ")
+    choice = input()
+    if(choice == 'T'):
+        sentiment = scrapeTweets(start_date, end_date, sentiment_correlation)
+    elif(choice == 'N'):
+        print("nog niet implemented")
+    elif(choice == 'Q'):
+        quit()
+    print(sentiment)
+
+    #get coin prices
+    btc = yf.download('BTC-USD', start, end)
+    btc = btc.reset_index()
+    #enter coin data in variables
+    open = btc.Open
+    dates = btc.Date
+    close = btc.Close
+    
+
+    calculateIncrease(percentual_increase)
+
+    total = sentimentAccuracy(sentiment, open, close, total)
 
     print(total)
     print(len(sentiment))
     print(total/len(sentiment), "%")
 
+    #plot the price graph with selling points
+    # plt.plot(dates, open)
+    # plt.xlabel('datum')
+    # plt.ylabel('prijs')
+    # plt.scatter(dates, open, s = 50, c = sentiment)
+    # plt.grid (True)
+    # plt.show()
+    # plt.close()
     
-    plt.plot(dates, open)
-    plt.xlabel('datum')
-    plt.ylabel('prijs')
-    plt.scatter(dates, open, s = 50, c = sentiment)
-    plt.grid (True)
+    #plot the scatter plot for correlation between sentiment and price increase
+    plt.scatter(sentiment_correlation, percentual_increase)
+    plt.xlabel('sentiment')
+    plt.ylabel('percentage')
+    plt.grid(True)
     plt.show()
-
-
-
-
-
-
-    # test =+ sid_obj.polarity_scores("Idiots are people who are less intelligent")['compound']
-    # letters = ["fuck","jesus christ","fucking hell","love"]
-    # totalscore = 0
-    # for tweet in letters:
-    #     print(tweet)
-    #     print(sid_obj.polarity_scores(tweet)['compound'])
-    #     totalscore += sid_obj.polarity_scores(tweet)['compound']
-    # print(totalscore)
-    # print(totalscore / len(letters))
-    #print(test)
-    #print(sentiment_dict)
