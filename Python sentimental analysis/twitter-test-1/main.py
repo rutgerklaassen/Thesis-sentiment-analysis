@@ -3,10 +3,12 @@ import csv
 import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
+import yfinance as yf
+import requests
+from cgitb import reset
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from Scweet.scweet import scrape
 from Scweet.user import get_user_information, get_users_following, get_users_followers
-import yfinance as yf
 	
 
 
@@ -77,7 +79,25 @@ def sentimentAccuracy(sentiment, open, close, total):
                 total = total + 100
     return total
 
+def scrapeNews(start_date, end_date, sentiment_correlation):
 
+    #set up the api 
+    url = "https://contextualwebsearch-websearch-v1.p.rapidapi.com/api/search/NewsSearchAPI"
+
+    querystring = {"q":"bitcoin","pageNumber":"1","pageSize":"50","autoCorrect":"true","fromPublishedDate":"null","toPublishedDate":"null"}
+
+    headers = {
+        'x-rapidapi-host': "contextualwebsearch-websearch-v1.p.rapidapi.com",
+        'x-rapidapi-key': "d0eb600446mshf303aa8ca1b696dp10dd32jsnc6599e6c1cb5"
+        }
+
+    delta = dt.timedelta(days=1)
+    pd.set_option('display.max_columns', None)
+    while start_date <= end_date:
+        
+        start_date += delta
+    
+    exit()
 if __name__ == "__main__":	
 
     #initialize sentiment object
@@ -105,7 +125,7 @@ if __name__ == "__main__":
     if(choice == 'T'):
         sentiment = scrapeTweets(start_date, end_date, sentiment_correlation)
     elif(choice == 'N'):
-        print("nog niet implemented")
+        sentiment = scrapeNews(start_date, end_date, sentiment_correlation)
     elif(choice == 'Q'):
         quit()
     print(sentiment)
@@ -142,3 +162,16 @@ if __name__ == "__main__":
     plt.ylabel('percentage')
     plt.grid(True)
     plt.show()
+
+
+
+
+
+    # date = str(start_date).split('-')
+    #     retardate = date[1]+'/'+date[2]+'/'+date[0]
+    #     news = GoogleNews(start = start_date, end = start_date)
+    #     news.search('Bitcoin')
+    #     result = news.result()
+    #     df = pd.DataFrame(result)
+    #     print(df.head)
+    #   print(news.getVersion())
