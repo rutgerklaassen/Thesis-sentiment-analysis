@@ -1,3 +1,4 @@
+from copyreg import constructor
 import os
 import csv
 import pandas as pd
@@ -5,10 +6,14 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import yfinance as yf
 import requests
+import twint
+from os import path
 from cgitb import reset
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from Scweet.scweet import scrape
 from Scweet.user import get_user_information, get_users_following, get_users_followers
+from scipy.stats import pearsonr
+
 	
 
 
@@ -17,29 +22,32 @@ def scrapeTweets(start_date, end_date, sentiment_correlation):
     delta = dt.timedelta(days=1)
     sentiment = []
     while start_date <= end_date:
-        #data = scrape(words=['bitcoin','ethereum'], since=str(start_date), until=str(start_date+delta), from_account = None, interval=1, headless=False, display_type="Top", save_images=False, lang="en",resume=False, filter_replies=False, proximity=False)
+        #string = 'twint --search "bitcoin, btc" --lang en --since "' + str((start_date - delta)) + ' 22:59:59" --until "' + str(start_date) + ' 22:59:59" -o outputs/' + str(start_date) + '.csv --csv'
+        #os.system(string)
         sentimentAnalysis(start_date, start_date+delta, sentiment, sentiment_correlation)
         start_date += delta
     return sentiment
 
-#actua;;y performs sentiment analysis on tweets
+#actually performs sentiment analysis on tweets
 def sentimentAnalysis(start_date, stop_date, sentiment, sentiment_correlation):
     #find and parse the csv file
-    print(sentiment)
     for file in os.listdir("./outputs"):
-        if file.endswith(str(stop_date)+".csv"):
+        if file.endswith(str(start_date)+".csv"):
             filepath = os.path.join("./outputs/", file)
-    #file = open(filepath)
+
+    #reads csv
     data = pd.read_csv(filepath)
+
     #put csv file data in an array
     tweets = []
-    tweets = data['Embedded_text'].values
+    tweets = data['tweet'].values
     totalscore = 0
-    #print(start_date)
 
     #determine ploarity value by sentiment analysis
-    for tweet in tweets:
+    for tweet in tweets:   
         totalscore += sid_obj.polarity_scores(tweet)['compound']
+
+    
     if(len(tweets)!=0):
         totalscore = totalscore / len(tweets)
     sentiment_correlation.append(totalscore)
@@ -142,11 +150,13 @@ if __name__ == "__main__":
     calculateIncrease(percentual_increase)
 
     total = sentimentAccuracy(sentiment, open, close, total)
-
+		
     print(total)
     print(len(sentiment))
     print(total/len(sentiment), "%")
 
+    corr, _ = pearsonr(sentiment_correlation, percentual_increase)
+    print('Spearmans correlation: %.3f' % corr)
     #plot the price graph with selling points
     # plt.plot(dates, open)
     # plt.xlabel('datum')
@@ -157,21 +167,14 @@ if __name__ == "__main__":
     # plt.close()
     
     #plot the scatter plot for correlation between sentiment and price increase
-    plt.scatter(sentiment_correlation, percentual_increase)
-    plt.xlabel('sentiment')
-    plt.ylabel('percentage')
-    plt.grid(True)
-    plt.show()
+		
+    #plt.scatter(sentiment_correlation, percentual_increase)
+    #plt.xlabel('sentiment')
+    #plt.ylabel('percentage')
+    #plt.grid(True)
+    #plt.show()
 
 
 
 
 
-    # date = str(start_date).split('-')
-    #     retardate = date[1]+'/'+date[2]+'/'+date[0]
-    #     news = GoogleNews(start = start_date, end = start_date)
-    #     news.search('Bitcoin')
-    #     result = news.result()
-    #     df = pd.DataFrame(result)
-    #     print(df.head)
-    #   print(news.getVersion())
