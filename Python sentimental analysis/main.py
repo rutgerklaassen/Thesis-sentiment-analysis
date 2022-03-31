@@ -10,7 +10,7 @@ import requests
 import twint
 import time
 import json
-
+import numpy as np
 from re import search
 from urllib import response
 from copyreg import constructor
@@ -22,28 +22,33 @@ from Scweet.scweet import scrape
 from Scweet.user import get_user_information, get_users_following, get_users_followers
 from scipy.stats import pearsonr
 from googleapiclient.discovery import build
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix
+
 
 
 
 #scrapes tweets, uncomment data line if you've never tried these dates before
-def scrapeTweets(start_date, end_date, sentiment_correlation):
+def scrapeTweets(start_date, end_date, day_sentiment):
     delta = dt.timedelta(days=1)
     sentiment = []
     while start_date <= end_date:
         #string = 'twint --search "bitcoin, btc" --lang en --since "' + str((start_date - delta)) + ' 22:59:59" --until "' + str(start_date) + ' 22:59:59" -o outputs/' + str(start_date) + '.csv --csv'
         #os.system(string)
-        sentimentAnalysis(start_date, start_date+delta, sentiment, sentiment_correlation, "twitter")
+        sentimentAnalysis(start_date, start_date+delta, sentiment, day_sentiment, "twitter")
         start_date += delta
     return sentiment
 
 #actually performs sentiment analysis on tweets
-def sentimentAnalysisTwitter(start_date, stop_date, sentiment, sentiment_correlation):
+def sentimentAnalysisTwitter(start_date, stop_date, sentiment, day_sentiment):
     #find and parse the csv file
     filepath = ""
     for file in os.listdir("./outputs"):
         #if file.endswith(str(start_date)+".csv"):
         if file.endswith("test3"+".csv"):
-            filepath = os.path.join("./outputs/", file)
+            filepath = os.path.join("./twitteroutputs/", file)
 
     #reads csv
     data = pd.read_csv(filepath)
@@ -60,7 +65,7 @@ def sentimentAnalysisTwitter(start_date, stop_date, sentiment, sentiment_correla
     
     if(len(tweets)!=0):
         totalscore = totalscore / len(tweets)
-    sentiment_correlation.append(totalscore)
+    day_sentiment.append(totalscore)
 
     #add colours to array for graph
     if(totalscore > 0.1):
@@ -70,33 +75,53 @@ def sentimentAnalysisTwitter(start_date, stop_date, sentiment, sentiment_correla
     else:
         sentiment.append('gray')
 
-def sentimentAnalysis(start_date, stop_date, sentiment, sentiment_correlation, platform):
+def sentimentAnalysis(start_date, stop_date, sentiment, day_sentiment, platform):
     #find and parse the csv file
-    for file in os.listdir("./outputs"):
-        if file.endswith(str(start_date)+".csv"):
-        #if file.endswith("test3"+".csv"):
-            filepath = os.path.join("./outputs/", file)
 
-    #reads csv
-    data = pd.read_csv(filepath)
 
     #put csv file data in an array
     if(platform == "twitter"):
+        filepath = ""
+        for file in os.listdir("./twitteroutputs"):
+            if file.endswith(str(start_date)+".csv"):
+            #if file.endswith("test3"+".csv"):
+                filepath = os.path.join("./twitteroutputs/", file)
+
+        #reads csv
+        data = pd.read_csv(filepath)
         posts = data['tweet'].values
-        totalscore = 0
 
     if(platform == "reddit"):
+        filepath = ""
+        print(os.listdir())
+        for file in os.listdir("redditoutputs"):
+            if file.endswith(str(start_date)+".csv"):
+                filepath = os.path.join("./redditoutputs/", file)
+
+        #reads csv
+        data = pd.read_csv(filepath)
         posts = data['Text'].values
-        totalscore = 0
-        
+    totalscore = 0
+    highestScore = 0
+    lowestScore = 1
+    numberOfPosts = 0
     #determine ploarity value by sentiment analysis
     for post in posts:   
-        totalscore += sid_obj.polarity_scores(post)['compound']
+        numberOfPosts += 1
+        score = sid_obj.polarity_scores(post)['compound']
+        if score > highestScore:
+            highestScore = score
+        if score < lowestScore:
+            lowestScore = score
+        totalscore += score
 
     
     if(len(posts)!=0):
         totalscore = totalscore / len(posts)
-    sentiment_correlation.append(totalscore)
+    day_sentiment.append(totalscore)
+    highest_score.append(highestScore)
+    lowest_score.append(lowestScore)
+    number_of_posts.append(numberOfPosts)
 
     #add colours to array for graph
     if(totalscore > 0.1):
@@ -109,8 +134,12 @@ def sentimentAnalysis(start_date, stop_date, sentiment, sentiment_correlation, p
 def calculateIncrease(percentual_increase):
     for idx, price in enumerate(open):
         difference = close[idx] - open[idx]
-        increase = difference / open[idx] * 100
-        percentual_increase.append(increase)
+        percent = difference / open[idx] * 100
+        percentual_increase.append(percent)
+        if percent > 0:
+            increase.append(1)
+        else:
+            increase.append(0)
     return percentual_increase
 
 #check if the sentiment is accurate for predicting the price
@@ -132,53 +161,16 @@ def sentimentAccuracy(sentiment, open, close, total):
                 total = total + 100
     return total
 
-# def scrapeYoutube(start_date, end_date, sentiment_correlation):
-
-#     #set up the api 
-#     api_key = 'AIzaSyD39VCOVHS_ljckZFpOdN2ZfIsXS9EfhLg'
-#     youtube = build('youtube', 'v3', developerKey=api_key)
-
-    
-#     locations = ['US','GB','CA']
-#     delta = dt.timedelta(days=1)
-#     pd.set_option('display.max_columns', None)
-#     titles = list(range(0))
-#     while start_date <= end_date:
-#         for countryCode in locations:
-#             search_response = youtube.search().list(
-#                 q='"bitcoin" | "BTC"',
-#                 part = 'snippet',
-#                 type = 'video',
-#                 maxResults = 50,
-#                 publishedAfter = str(start_date) + "T00:00:00Z",
-#                 publishedBefore = str(start_date + delta) + "T00:00:00Z",
-#                 regionCode = countryCode
-#             )
-#             response = search_response.execute()
-#             videos = response['items']
-#             for video in videos:
-#                 titles.append(video['snippet']['title'].replace("&","").replace("#","").replace(";","").replace("amp",""))
-#         toCsv(titles)    
-#         start_date += delta
-    
-# def toCsv(titles):
-#     zip(titles)
-#     header = ["title"]
-#     with open('countries.csv', 'w', encoding='UTF8', newline='') as f:
-#         writer = csv.writer(f)
-#         writer.writerow(header)
-#         for val in titles:
-#             writer.writerow([val])
-
-def scrapeReddit(start_date, end_date, sentiment_correlation):
+def scrapeReddit(start_date, end_date, day_sentiment):
+    #Subreddit to query
     subreddits =['CryptoCurrency', 'Crypto_Currency_News', 'CryptoMarkets', 'CryptoCurrencies']
-    subStats = {}
     delta = dt.timedelta(days=1)
     sentiment = []
     while start_date <= end_date:
+        print(start_date)
         for sub in subreddits:
-            before = "1609628400" 
-            after = "1609542000"  
+            before = int(time.mktime(dt.datetime.strptime(str(start_date+delta).replace('-','/'), "%Y/%m/%d").timetuple()))
+            after =  int(time.mktime(dt.datetime.strptime(str(start_date).replace('-','/'), "%Y/%m/%d").timetuple()))
             query = "bitcoin"
             print(query, after, before, sub)
             data = getPushshiftData(query, after, before, sub)
@@ -188,15 +180,18 @@ def scrapeReddit(start_date, end_date, sentiment_correlation):
                 # Calls getPushshiftData() with the created date of the last submission
                 after = data[-1]['created_utc']
                 data = getPushshiftData(query, after, before, sub)
-
+        updateSubs_file(start_date)
+        sentimentAnalysis(start_date, start_date+delta, sentiment, day_sentiment, "reddit")
+        start_date += delta
     return sentiment
+
 
 def getPushshiftData(query, after, before, sub):
     url = 'https://api.pushshift.io/reddit/search/submission/?title='+str(query)+'&size=1000&after='+str(after)+'&before='+str(before)+'&subreddit='+str(sub)
     print(url)
     r = requests.get(url)
-    data = json.loads(r.text)
-    #print(data['data'])
+    if(r.text):
+        data = json.loads(r.text)
     return data['data']
 
 def collectSubData(subm):
@@ -213,10 +208,10 @@ def collectSubData(subm):
             subStats[sub_id] = subData
         return
 
-def updateSubs_file():
-    print("binnen")
+
+def updateSubs_file(name):
     upload_count = 0
-    filename = input()
+    filename = "redditoutputs/"+ str(name) + ".csv"
     file = filename
     with open(file, 'w', newline='', encoding='utf-8') as file: 
         a = csv.writer(file, delimiter=',')
@@ -227,6 +222,27 @@ def updateSubs_file():
             upload_count+=1
             
         print(str(upload_count) + " submissions have been uploaded")
+
+def train_support_vector(df_train, df_test, increase_train, increase_test):
+    svc_model = SVC()
+    scaler = StandardScaler().fit(df_train)
+    df_train = scaler.transform(df_train)
+    df_test = scaler.transform(df_test)
+    perform_prediction(svc_model.fit(df_train, increase_train), df_test, increase_test)
+
+
+def build_sets(day_sentiment, highest_score, lowest_score, number_of_posts):
+    d = {'Sentiment': day_sentiment, 'Highest': highest_score, 'Lowest': lowest_score, 'Amount':number_of_posts}
+    df = pd.DataFrame(d)
+    df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.5, random_state=50)
+    train_support_vector(df_train, df_test, increase_train, increase_test)
+
+def perform_prediction(model, df_test, increase_test):
+    increase_predict = model.predict(df_test)
+    cm = np.array(confusion_matrix(increase_test, increase_predict, labels=[0,1]))
+    confusion = pd.DataFrame(cm, index=['Increase', 'Decrease'], columns=['Predicted increase', 'Predicted Decrease'])
+    print (confusion)
+    exit()
 
 
 if __name__ == "__main__":	
@@ -247,18 +263,25 @@ if __name__ == "__main__":
     end_date = dt.date(int(end_date[0]),int(end_date[1]),int(end_date[2]))
 
     #initialize global variables
-    sentiment_correlation = []
-    percentual_increase = []
-    total = 0
+    day_sentiment = []
+    highest_score = []
+    lowest_score = []
+    number_of_posts = []
 
-    print("Would you like to use Twitter(T), Youtube (Y), quit (Q) ")
+    percentual_increase = []
+    increase = []
+    
+    total = 0
+    subStats = {}
+
+    print("Would you like to use Twitter(T), Reddit (R), quit (Q) ")
     choice = input()
     if(choice == 'T'):
-        sentiment = scrapeTweets(start_date, end_date, sentiment_correlation)
+        sentiment = scrapeTweets(start_date, end_date, day_sentiment)
     #elif(choice == 'Y'):
-        #sentiment = scrapeYoutube(start_date, end_date, sentiment_correlation)
+        #sentiment = scrapeYoutube(start_date, end_date, day_sentiment)
     elif(choice == 'R'):
-        sentiment = scrapeReddit(start_date, end_date, sentiment_correlation)
+        sentiment = scrapeReddit(start_date, end_date, day_sentiment)
     elif(choice == 'Q'):
         quit()
     print(sentiment)
@@ -273,16 +296,19 @@ if __name__ == "__main__":
     
 
     calculateIncrease(percentual_increase)
-    print("setnimetnt ::: ")
-    print(sentiment_correlation)
-    total = sentimentAccuracy(sentiment, open, close, total)
-		
-    print(total)
-    print(len(sentiment))
-    print(total/len(sentiment), "%")
 
-    corr, _ = pearsonr(sentiment_correlation, percentual_increase)
-    print('Spearmans correlation: %.3f' % corr)
+    build_sets(day_sentiment, highest_score, lowest_score, number_of_posts)
+
+    # print("setnimetnt ::: ")
+    # print(day_sentiment)
+    # total = sentimentAccuracy(sentiment, open, close, total)
+		
+    # print(total)
+    # print(len(sentiment))
+    # print(total/len(sentiment), "%")
+
+    # corr, _ = pearsonr(day_sentiment, percentual_increase)
+    # print('Spearmans correlation: %.3f' % corr)
     #plot the price graph with selling points
     # plt.plot(dates, open)
     # plt.xlabel('datum')
@@ -294,11 +320,11 @@ if __name__ == "__main__":
     
     #plot the scatter plot for correlation between sentiment and price increase
 		
-    plt.scatter(sentiment_correlation, percentual_increase)
-    plt.xlabel('sentiment')
-    plt.ylabel('percentage')
-    plt.grid(True)
-    plt.show()
+    # plt.scatter(day_sentiment, percentual_increase)
+    # plt.xlabel('sentiment')
+    # plt.ylabel('percentage')
+    # plt.grid(True)
+    # plt.show()
 
 
 
