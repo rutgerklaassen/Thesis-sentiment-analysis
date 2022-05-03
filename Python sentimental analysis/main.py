@@ -10,6 +10,7 @@ import requests
 import twint
 import time
 import json
+import sys
 import numpy as np
 from re import search
 from urllib import response
@@ -234,30 +235,37 @@ def train_support_vector(df_train, df_test, increase_train, increase_test):
 def build_sets(day_sentiment, highest_score, lowest_score, number_of_posts):
     d = {'Sentiment': day_sentiment, 'Highest': highest_score, 'Lowest': lowest_score, 'Amount':number_of_posts}
     df = pd.DataFrame(d)
-    df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.5, random_state=50)
+    df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.99, random_state=50)
     train_support_vector(df_train, df_test, increase_train, increase_test)
 
 def perform_prediction(model, df_test, increase_test):
     increase_predict = model.predict(df_test)
+    if(sys.argv[4]=='S'):
+        name = "sentimentoutputs/" + start_date + "|" + end_date + "|" + sys.argv[3]
+        with open(name, 'w') as f:
+            for item in day_sentiment:
+                print >> f, item
+    
     cm = np.array(confusion_matrix(increase_test, increase_predict, labels=[0,1]))
     confusion = pd.DataFrame(cm, index=['Increase', 'Decrease'], columns=['Predicted increase', 'Predicted Decrease'])
     print (confusion)
     exit()
 
 
-if __name__ == "__main__":	
+if __name__ == "__main__":
 
+    print(str(sys.argv))
     #initialize sentiment object
     sid_obj = SentimentIntensityAnalyzer()
 
-    #enter correct dates
-    print("enter start date (yyyy-mm-dd) : ")
-    start_date = input()
+    start_date = sys.argv[1]
+    print("start date is : ", start_date)
     start_date = start_date.split("-")
     start = dt.datetime(int(start_date[0]),int(start_date[1]),int(start_date[2]))
     start_date = dt.date(int(start_date[0]),int(start_date[1]),int(start_date[2]))
-    print("enter end date (yyyy-mm-dd) : ")
-    end_date = input()
+
+    end_date = sys.argv[2]
+    print("end date is : ", end_date)
     end_date = end_date.split("-")
     end = dt.date(int(end_date[0]),int(end_date[1]),int(end_date[2]))
     end_date = dt.date(int(end_date[0]),int(end_date[1]),int(end_date[2]))
@@ -274,13 +282,14 @@ if __name__ == "__main__":
     total = 0
     subStats = {}
 
-    print("Would you like to use Twitter(T), Reddit (R), quit (Q) ")
-    choice = input()
+    choice = sys.argv[3]
     if(choice == 'T'):
+        print("You are using Twitter.")
         sentiment = scrapeTweets(start_date, end_date, day_sentiment)
     #elif(choice == 'Y'):
         #sentiment = scrapeYoutube(start_date, end_date, day_sentiment)
     elif(choice == 'R'):
+        print("You are using Reddit.")
         sentiment = scrapeReddit(start_date, end_date, day_sentiment)
     elif(choice == 'Q'):
         quit()
