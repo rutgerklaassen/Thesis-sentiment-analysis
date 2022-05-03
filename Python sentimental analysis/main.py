@@ -27,7 +27,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix
-
+from sklearn.dummy import DummyClassifier
 
 
 
@@ -229,17 +229,28 @@ def train_support_vector(df_train, df_test, increase_train, increase_test):
     scaler = StandardScaler().fit(df_train)
     df_train = scaler.transform(df_train)
     df_test = scaler.transform(df_test)
-    perform_prediction(svc_model.fit(df_train, increase_train), df_test, increase_test)
+
+    #create dummy model 
+    dm = DummyClassifier()
+    bl = dm.fit(df_train, increase_train)
+    perform_prediction(svc_model.fit(df_train, increase_train), df_test, increase_test, bl)
 
 
 def build_sets(day_sentiment, highest_score, lowest_score, number_of_posts):
     d = {'Sentiment': day_sentiment, 'Highest': highest_score, 'Lowest': lowest_score, 'Amount':number_of_posts}
     df = pd.DataFrame(d)
-    df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.99, random_state=50)
+    df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.5, random_state=69)
     train_support_vector(df_train, df_test, increase_train, increase_test)
 
-def perform_prediction(model, df_test, increase_test):
+def perform_prediction(model, df_test, increase_test, bl):
     increase_predict = model.predict(df_test)
+    #calculate baseline %
+    baseline = bl.predict(df_test)
+    dummyCm = np.array(confusion_matrix(increase_test, baseline, labels=[0,1]))
+    total = dummyCm[0][0] + dummyCm[0][1] + dummyCm[1][0] + dummyCm[1][1]
+    dummyPercentage = ((dummyCm[0][0] + dummyCm[1][1])/ total) * 100
+    print(dummyPercentage)
+
     if(sys.argv[4]=='S'):
         name = "sentimentoutputs/" + start_date + "|" + end_date + "|" + sys.argv[3]
         with open(name, 'w') as f:
