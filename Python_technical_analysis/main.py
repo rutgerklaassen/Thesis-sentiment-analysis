@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.dummy import DummyClassifier
+from joblib import dump, load 
 
 def technicalIndicators(df):
 
@@ -284,22 +285,49 @@ def calculateIncrease(df):
 def timeLoop(start_date, end_date, df):
     delta = dt.timedelta(hours=1)
     while start_date < end_date:
-        print(start_date)
+        #print(start_date)
 
         
         start_date += delta
 
 def machineLearning(df):
-    df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.5, random_state=69)
-    svc_model = SVC()
-    scaler = StandardScaler().fit(df_train)
-    df_train = scaler.transform(df_train)
-    df_test = scaler.transform(df_test)
-    model = svc_model.fit(df_train, increase_train)
-    increase_predict = model.predict(df_test)
-    cm = np.array(confusion_matrix(increase_test, increase_predict, labels=[0,1]))
-    confusion = pd.DataFrame(cm, index=['Increase', 'Decrease'], columns=['Predicted increase', 'Predicted Decrease'])
-    print (confusion)
+    if(saveOrUse == 'S'):
+        df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.5, random_state=1)
+        svc_model = SVC()
+        scaler = StandardScaler().fit(df_train)
+        df_train = scaler.transform(df_train)
+        df_test = scaler.transform(df_test)
+        model = svc_model.fit(df_train, increase_train)
+
+        dump(model, str(start_date) +"-"+str(end_date) + "-Model")
+
+        increase_predict = model.predict(df_test)
+        cm = np.array(confusion_matrix(increase_test, increase_predict, labels=[0,1]))
+        confusion = pd.DataFrame(cm, index=['Increase', 'Decrease'], columns=['Predicted increase', 'Predicted Decrease'])
+        print (confusion)
+
+
+        model = load(str(start_date) +"-"+str(end_date) + "-Model")
+        #train_test_split(df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.1, random_state=1))
+        increase_predict = model.predict(df_test)
+        cm = np.array(confusion_matrix(increase_test, increase_predict, labels=[0,1]))
+        confusion = pd.DataFrame(cm, index=['Increase', 'Decrease'], columns=['Predicted increase', 'Predicted Decrease'])
+        print (confusion)
+
+
+    else:
+        model = load(saveOrUse)
+        #train_test_split(df_train, df_test, increase_train, increase_test = train_test_split(df,increase, test_size = 0.1, random_state=1))
+        increase_predict = model.predict(df)
+        cm = np.array(confusion_matrix(increase, increase_predict, labels=[0,1]))
+        confusion = pd.DataFrame(cm, index=['Increase', 'Decrease'], columns=['Predicted increase', 'Predicted Decrease'])
+        print (confusion)
+
+
+        ##vanaf hier tweede?????
+
+         
+
     exit()
 
 def transformDate(date):
@@ -308,7 +336,7 @@ def transformDate(date):
     dateFormat = dt.date(int(date[0]),int(date[1]),int(date[2]))
     return(datetimeFormat, dateFormat)
 
-def main(start_date, end_date):
+def main(start_date, end_date, saveOrUse):
     #transforms start and end date
     start, start_date = transformDate(start_date)
     end, end_date = transformDate(end_date)
@@ -319,20 +347,19 @@ def main(start_date, end_date):
     #the +1 is sop that we can take the closing price of the day after end, this is for measwurement purposes
     df = yf.download('BTC-USD', start-dt.timedelta(days=3), end+dt.timedelta(days=1), interval="1h")
     technicalIndicators(df)
-    #testing purposes TODO: remove
-    #print(df)
+
+    
     calculateIncrease(df)
     df = transformDataFrame(df)
     df.to_csv('nulltest.csv')
-    exit()
 
 
 
     print(increase)
     print(df)
-    timeLoop(start, end, df)
+    #timeLoop(start, end, df)
     machineLearning(df)
-    delta = dt.timedelta(days=1)
+    #delta = dt.timedelta(days=1)
 
     #df.ta.macd(cumulative=True)
     #pd.DataFrame('Close':[df.Close[]])
@@ -352,6 +379,7 @@ def main(start_date, end_date):
 if __name__ == "__main__":
     start_date = sys.argv[1]
     end_date = sys.argv[2]
+    saveOrUse = sys.argv[3]
     increase = []
     percentual_increase = []
-    main(start_date, end_date)
+    main(start_date, end_date, saveOrUse)
