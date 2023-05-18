@@ -18,11 +18,15 @@ if __name__ == "__main__":
         filepath = os.path.join("./outputs/", file)
         if file.endswith(".csv"):
             print(filepath)   
-            df = pd.read_csv(filepath)
-            df.loc[:,'tweet'] = [replaceNonAlpha(x) for x in df.tweet]
-            df = df.drop_duplicates(subset='tweet', keep="first")
-            print(df.tweet)
-            df.to_csv(filepath)
+            df = pd.read_csv(filepath, sep="\t")
+            print(df)
+            try:
+                df.loc[:,'tweet'] = [replaceNonAlpha(x) for x in df.tweet]
+                df = df.drop_duplicates(subset='tweet', keep="first")
+                df.to_csv(filepath)
+            except:
+                print("oh nee")
+
 
 
 

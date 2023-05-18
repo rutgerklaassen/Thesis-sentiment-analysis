@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
     #the yfinance code is messy and you have to correct for which timezone you're in, this one is for america timezone
     timezoneCorrector = dt.timedelta(hours=6) 
-    coin = yf.download('DOGE-USD', (start-timezoneCorrector), end + dt.timedelta(hours=-4), interval="1h" ).reset_index()
+    coin = yf.download('BTC-USD', (start-timezoneCorrector), end + dt.timedelta(hours=-4), interval="1h" ).reset_index()
     coin.rename(columns={coin.columns[0]: "dates"}, inplace = True)
     coin.set_index('dates', inplace=True)
     coin = coin.tz_localize(None)

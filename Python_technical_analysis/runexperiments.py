@@ -24,10 +24,10 @@ if __name__ == "__main__":
         else:
             plusOneEndString = str(plusOneEnd.year)+ "-" +str(plusOneEnd.month)+ "-0" +str(plusOneEnd.day)
         modelString = startString + "-" + endString + "-Model"
-        #createModel = "python3 createModel.py " + startString + " " + endString
-        #os.system(createModel)
+        createModel = "python3 main.py " + startString + " " + endString + " S"
+        os.system(createModel)
 
-        testModel = "python3 testModel.py " + endString + " " + plusOneEndString + " " + modelString
+        testModel = "python3 main.py " + endString + " " + plusOneEndString + " " + modelString
         os.system(testModel)
         end = end + relativedelta(months=1)
         

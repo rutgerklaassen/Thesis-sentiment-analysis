@@ -39,10 +39,13 @@ def sentimentAnalysis(date, sentiment, day_sentiment, hour):
     else:
         hour = str(hour)
     
+    filename = ""
     print("searching for :", dateString + "H" + hour + ".csv")
     for file in os.listdir("./outputs"):
         if file.endswith(dateString + "H" + hour + ".csv"):
             filepath = os.path.join("./outputs/", file)
+            filename = file
+            
         
     #reads csv
     try :
@@ -77,7 +80,10 @@ def sentimentAnalysis(date, sentiment, day_sentiment, hour):
     scores = []
     for post in posts:   
         numberOfPosts += 1
-        score = sid_obj.polarity_scores(post)['compound']
+        try:
+            score = sid_obj.polarity_scores(post)['compound']
+        except:
+            score = 0
         scores.append(score)
         if score > highestScore:
             highestScore = score
@@ -86,7 +92,9 @@ def sentimentAnalysis(date, sentiment, day_sentiment, hour):
         totalscore += score
 
     scores = np.array(scores)
-    
+   
+
+
     if(len(posts)!=0):
         totalscore = totalscore / len(posts)
     else:
@@ -99,11 +107,26 @@ def sentimentAnalysis(date, sentiment, day_sentiment, hour):
     standard_deviations.append(scores.std())
     skewness.append(skew(scores))
     kurtosisList.append(kurtosis(scores))
-
+    percent = 0
     diff = coin.Close[nextDate] - coin.Close[dateTime]
     if(diff != 0):
         percent = diff / coin.Close[dateTime] * 100
         percentual_increase.append(percent)
+    
+    dataframe = {
+        'day_sentiment':totalscore,
+        'highest_score':highestScore,
+        'lowest_score':lowestScore,
+        'number_of_posts':numberOfPosts,
+        'standard_deviation':scores.std(),
+        'skewness':skew(scores),
+        'kurtosis':kurtosis(scores),
+        'percentual increase': percent
+    }
+    df = pd.DataFrame(dataframe, index = [0])
+    df.to_csv("sentimentOutputs/"+filename)
+    
+
     if(coin.Close[nextDate] > coin.Close[dateTime]):
         increase.append(1)
 
@@ -145,7 +168,7 @@ def build_sets(day_sentiment, highest_score, lowest_score, number_of_posts, stan
 
 def perform_prediction(model, df_test, increase_test, bl):
     
-    #model = load("2021-10-12-2021-11-30-Model")
+
     increase_predict = model.predict(df_test)
     #calculate baseline %
     baseline = bl.predict(df_test)
@@ -157,21 +180,9 @@ def perform_prediction(model, df_test, increase_test, bl):
 
     dump(model, str(start_date) + "-" + str(end_date) + "-Model")
     exit()
-    # name = "sentimentoutputs/" + start_date + "|" + end_date + "|" + sys.argv[3]
-    # with open(name, 'w') as f:
-    #     for item in day_sentiment:
-    #         print >> f, item
-    
-    cm = np.array(confusion_matrix(increase_test, increase_predict, labels=[0,1]))
-    confusion = pd.DataFrame(cm, index=['Increase', 'Decrease'], columns=['Predicted increase', 'Predicted Decrease'])
-    print (confusion)
-    total = cm[0][0] + cm[0][1] + cm[1][0] + cm[1][1]
-    percentage = ((cm[0][0] + cm[1][1])/ total) * 100
-    print("real percentage : ", percentage)
-    exit()
 
 if __name__ == "__main__":
-
+    
     pd.set_option("display.max_rows", None, "display.max_columns", None)
 
     #initialize sentiment object
@@ -206,7 +217,7 @@ if __name__ == "__main__":
 
     #the yfinance code is messy and you have to correct for which timezone you're in, this one is for america timezone
     timezoneCorrector = dt.timedelta(hours=6) 
-    coin = yf.download('DOGE-USD', (start-timezoneCorrector), end + dt.timedelta(hours=-4), interval="1h" ).reset_index()
+    coin = yf.download('BTC-USD', (start-timezoneCorrector), end + dt.timedelta(hours=-4), interval="1h" ).reset_index()
     coin.rename(columns={coin.columns[0]: "dates"}, inplace = True)
     coin.set_index('dates', inplace=True)
     coin = coin.tz_localize(None)
@@ -217,5 +228,4 @@ if __name__ == "__main__":
         removespace = str(dateTime - timezoneCorrector).replace(" ","H").replace(":00:00","")
         sentimentAnalysis(dateTime, sentiment, day_sentiment, dateTime.hour)
         dateTime += delta
-
     build_sets(day_sentiment, highest_score, lowest_score, number_of_posts, standard_deviations, skewness, kurtosisList)
