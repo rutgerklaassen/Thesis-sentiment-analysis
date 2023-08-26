@@ -1,0 +1,18 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Sentiment and technical analysis in Python
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Rutger Hendricus Jacobus
+    family-names: Klaassen
+repository-code: >-
+  https://github.com/rutgerklaassen/Thesis_sentiment_analysis
+abstract: >-
+  Code repository for the thesis: Using sentiment analysis
+  on tweets for predicting cryptocurrency price movements: A
+  case study
